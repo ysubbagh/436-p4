@@ -13,7 +13,7 @@ app = Flask(__name__)
 # setup aws stuff
 s3 = boto3.client('s3')
 dynamo = boto3.resource('dynamodb')
-table = dynamo.Table('prog4-data')
+table = dynamo.Table('prog4')
 
 # load page
 @app.route("/")
@@ -90,12 +90,12 @@ def parse_data(data):
     for line in lines:
         if line.strip():
             record = {}
-            parts = line.split('\t') # if there are tabs, like azure file
-            if len(parts) == 1:
-                parts = line.split()
-            name = parts.pop(0)
-            record['name'] = name
-            for part in parts:
+            parts = line.split()  # Split by whitespace
+            first_name = parts[0]
+            last_name = parts[1]
+            record['first_name'] = first_name
+            record['last_name'] = last_name
+            for part in parts[2:]:  # Iterate over attributes starting from the third word
                 key_val = part.split('=')
                 if len(key_val) == 2:
                     key, value = key_val
@@ -103,18 +103,36 @@ def parse_data(data):
             parsed_data.append(record)
     return parsed_data
 
+
+
 #helper function for parse
 def upload_to_table(data):
     for item in data:
-        #check if item exists
-        response = table.get_item(Key={'name': item['name']})
-        if 'Item' not in response:
-            # insert, it doesnt already exist
-            try:
-                table.put_item(Item=item)
-            except Exception as e:
-                return False
+        print("Processing item:", item)
+        # Check if 'first_name' and 'last_name' attributes exist and are not empty
+        if 'first_name' in item and 'last_name' in item and item['first_name'] and item['last_name']:
+            # Concatenate first and last names to form the full name
+            full_name = f"{item['first_name']} {item['last_name']}"
+            # Check if item exists in the table
+            response = table.get_item(Key={'name': full_name})
+            if 'Item' not in response:
+                print("Inserting item into table:", item)
+                # Insert item into the table if it doesn't already exist
+                try:
+                    # Add the full name to the item before inserting into the table
+                    item['name'] = full_name
+                    table.put_item(Item=item)
+                except Exception as e:
+                    print("Error inserting item:", e)
+                    return False
+        else:
+            print("Skipping item:", item)
+            # Skip inserting item if either first_name or last_name attribute is missing or empty
+            continue
     return True
+
+
+
 
 # clear data from table
 @app.route("/clear-data", methods=["POST"])  
