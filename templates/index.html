@@ -44,7 +44,10 @@
         function loadData() {
             fetch("/load-data", {method: "POST"})
             .then(response => response.json())
-            .then(data => console.log(data))
+            .then(data => {
+                const message = data.message;
+                document.getElementById("query-results").innerText = message;
+            })
             .catch(error => console.error("Error:", error));
         }
         
@@ -67,7 +70,8 @@
             })
             .then(response => response.json())
             .then(data => {
-                document.getElementById("query-results").innerText = JSON.stringify(data);
+                const message = data.message;
+                document.getElementById("query-results").innerText = message;
             })
             .catch(error => console.error("Error:", error));
         }
