@@ -3,39 +3,35 @@
 # Author: Yasmine Subbagh
 # Date: 2/23
 
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, url_for, redirect, render_template
 from azure.storage.blob import BlobServiceClient, BlobClient, ContainerClient
 import requests
+import boto3
 
 app = Flask(__name__)
 
-@app.route('/api/data', methods=['POST'])
-def processData():
-    # get data
-    data = request.json
+# load page
+@app.route("/")
+def home():
+    return render_template("index.html")
 
-    # process
-    result = {'message': 'Data recieved successfully', 'data': data}
+# load data from sites
+@app.route("/load-data", methods=["POST"])
+def loadData():
+    return jsonify({"message": "Data loaded successfully"})
 
-    return jsonify(result)
+# clear data from table
+@app.route("/clear-data", methods=["POST"])  
+def clearData():
+    return jsonify({"message": "Data cleared successfully"})
 
-# get data from the files
-def getData():
-    awsUrl = "https://css490.blob.core.windows.net/lab4/input.txt"
-    azureUrl = "https://css490.blob.core.windows.net/lab4/input.txt"
+# query for user from table
+@app.route("/query", methods=["POST", "GET"])  
+def query():
+    first_name = request.form.get("first_name")
+    last_name = request.form.get("last_name")
+    return jsonify("No results found.")
 
-    outputFile = "input.txt"
-
-    AWSresponse = requests.get(awsUrl)
-    azureResponse = requests.get(azureUrl)
-
-    if AWSresponse.status_code == 200 and azureResponse.status_code == 200:
-        with open(outputFile, 'wb') as f:
-            f.write(AWSresponse.content)
-            f.write(azureResponse.content)
-        print("File donwloaded succesfully")
-    else:
-        print("Failed to download files")
-
+# intiazliation 
 if __name__ == '__main__':
     app.run(debug=True)
