@@ -36,7 +36,7 @@
     First Name: <input type="text" id="firstName"><br><br>
     Last Name: <input type="text" id="lastName"><br><br>
     <button class="button" onclick="query()">Query</button><br><br>
-    <div id="query-results"></div>
+    <div id="results"></div>
 
     <!-- To connect front to back via javascript-->
     <script>
@@ -46,7 +46,7 @@
             .then(response => response.json())
             .then(data => {
                 const message = data.message;
-                document.getElementById("query-results").innerText = message;
+                document.getElementById("results").innerText = message;
             })
             .catch(error => console.error("Error:", error));
         }
@@ -55,14 +55,17 @@
         function clearData() {
             fetch("/clear-data", {method: "POST"})
             .then(response => response.json())
-            .then(data => console.log(data))
+            .then(data => {
+                const message = data.message;
+                document.getElementById("results").innerText = message;
+            })
             .catch(error => console.error("Error:", error));
         }
 
         // get person data via the name entered
         function query() {
-            const firstName = document.getElementById("firstName").value
-            const lastName = document.getElementById("lastName").value
+            const firstName = document.getElementById("firstName").value;
+            const lastName = document.getElementById("lastName").value;
             fetch("/query", {
                 method: "POST",
                 body: JSON.stringify({firstName: firstName, lastName: lastName}),
@@ -71,7 +74,7 @@
             .then(response => response.json())
             .then(data => {
                 const message = data.message;
-                document.getElementById("query-results").innerText = message;
+                document.getElementById("results").innerText = message;
             })
             .catch(error => console.error("Error:", error));
         }

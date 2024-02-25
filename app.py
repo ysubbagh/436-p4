@@ -1,7 +1,7 @@
 # Program 4
 # CSS 436
 # Author: Yasmine Subbagh
-# Date: 2/23
+# Date: 2/25/23
 
 from flask import Flask, request, jsonify, url_for, redirect, render_template
 from azure.storage.blob import BlobServiceClient, BlobClient, ContainerClient
@@ -9,18 +9,22 @@ import requests
 import boto3
 import json
 
+# ---vars---
 app = Flask(__name__)
+
 # setup aws stuff
 s3 = boto3.client('s3')
 dynamo = boto3.resource('dynamodb')
 table = dynamo.Table('prog4')
 
-# load page
+
+# ---load page---
 @app.route("/")
 def home():
     return render_template("index.html")
 
-# load data from sites
+
+# ---load data from sites---
 @app.route("/load-data", methods=["POST"])
 def loadData():
     # urls to retrieve from 
@@ -64,7 +68,7 @@ def parse(awsFile, azureFile):
     else:
        return jsonify({"message": "Data uploaded failed."})
 
-#helper function for parse()
+#helper function for parse(), does each file
 def parseFile(file_path):
     bucket_name = 'program4'
 
@@ -82,7 +86,7 @@ def parseFile(file_path):
 
     return upload
 
-# helper function for parse
+# helper function for parse, do the actual parsing
 def parse_data(data):
     parsed_data = []
     lines = data.split('\n')
@@ -103,12 +107,9 @@ def parse_data(data):
             parsed_data.append(record)
     return parsed_data
 
-
-
-#helper function for parse
+#helper function for parse, upload the parsed data into the table
 def upload_to_table(data):
     for item in data:
-        print("Processing item:", item)
         # Check if 'first_name' and 'last_name' attributes exist and are not empty
         if 'first_name' in item and 'last_name' in item and item['first_name'] and item['last_name']:
             # Concatenate first and last names to form the full name
@@ -116,30 +117,56 @@ def upload_to_table(data):
             # Check if item exists in the table
             response = table.get_item(Key={'name': full_name})
             if 'Item' not in response:
-                print("Inserting item into table:", item)
                 # Insert item into the table if it doesn't already exist
                 try:
-                    # Add the full name to the item before inserting into the table
                     item['name'] = full_name
                     table.put_item(Item=item)
                 except Exception as e:
-                    print("Error inserting item:", e)
                     return False
         else:
-            print("Skipping item:", item)
             # Skip inserting item if either first_name or last_name attribute is missing or empty
             continue
     return True
 
 
-
-
-# clear data from table
+# ---clear data from table---
 @app.route("/clear-data", methods=["POST"])  
 def clearData():
-    return jsonify({"message": "Data cleared successfully"})
+    if deleteFiles() and emptyTable():
+        return jsonify({"message": "Data cleared successfully."})
 
-# query for user from table
+    return jsonify({"message": "Data not successfully cleared."})
+
+# helper function for clear, deleted the s3 files
+def deleteFiles():
+    # bucket creds
+    bucket_name = 'program4'
+    aws_key = 'awsInput.txt'
+    azure_key = 'azureInput.txt'
+
+    #delete
+    try:
+        s3.delete_object(Bucket=bucket_name, Key=aws_key)
+        s3.delete_object(Bucket=bucket_name, Key=azure_key)
+    except Exception as e:
+        return False
+    
+    return True
+
+# helper function for clear, empties out the table
+def emptyTable():
+    try: 
+        #get all items in table
+        response = table.scan()
+        # delete items in the table
+        for item in response['Items']:
+            table.delete_item(Key={'name': item['name']})
+    except Exception as e:
+        return False
+
+    return True
+
+# ---query for user from table---
 @app.route("/query", methods=["POST", "GET"])  
 def query():
     first_name = request.form.get("first_name")
