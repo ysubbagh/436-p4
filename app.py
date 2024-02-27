@@ -8,9 +8,11 @@ from azure.storage.blob import BlobServiceClient, BlobClient, ContainerClient
 import requests
 import boto3
 import json
+import time
 
 # ---vars---
 app = Flask(__name__)
+MAX_RETRY = 3
 
 # setup aws stuff
 s3 = boto3.client('s3')
@@ -36,24 +38,43 @@ def loadData():
     aws_key = 'awsInput.txt'
     azure_key = 'azureInput.txt'
 
-    # get files
+    # get files with retry logic
+    retry = 0
+    delay = 2
+
     #aws first
-    try:
-        #download
-        response = requests.get(awsUrl)
-        #upload
-        s3.put_object(Bucket=bucket_name, Key=aws_key, Body=response.content)
-    except Exception as e:
-        return jsonify({"message": "Could not upload file from AWS."})
+    while retry < MAX_RETRY:
+        try:
+            #download
+            response = requests.get(awsUrl)
+            #upload
+            s3.put_object(Bucket=bucket_name, Key=aws_key, Body=response.content)
+            break
+        except Exception as e:
+            retry += 1
+            if retry == MAX_RETRY:
+                return jsonify({"message": "Could not upload file from AWS."})
+            #backoff delay
+            time.sleep(delay)
+            delay *= 2
 
     #azure next
-    try:
-        #download
-        response = requests.get(azureUrl)
-        #upload
-        s3.put_object(Bucket=bucket_name, Key=azure_key, Body=response.content)
-    except Exception as e:
-        return jsonify({"message": "Could not upload file from Azure."})
+    retry = 0
+    delay = 2
+    while retry < MAX_RETRY:
+        try:
+            #download
+            response = requests.get(azureUrl)
+            #upload
+            s3.put_object(Bucket=bucket_name, Key=azure_key, Body=response.content)
+            break
+        except Exception as e:
+            retry += 1
+            if retry == MAX_RETRY:
+                return jsonify({"message": "Could not upload file from Azure."})
+            #backoff delay
+            time.sleep(delay)
+            delay *= 2
 
     #parse the data from the files
     return parse(aws_key, azure_key)
@@ -66,7 +87,7 @@ def parse(awsFile, azureFile):
     if aws_data and azure_data:
         return jsonify({"message": "Data uploaded to database successfully."})
     else:
-       return jsonify({"message": "Data uploaded failed."})
+       return jsonify({"message": "Data uploaded failed, some entries may have still been uploaded. "})
 
 #helper function for parse(), does each file
 def parseFile(file_path):
@@ -109,6 +130,7 @@ def parse_data(data):
 
 #helper function for parse, upload the parsed data into the table
 def upload_to_table(data):
+    items_failed = 0
     for item in data:
         # Check if 'first_name' and 'last_name' attributes exist and are not empty
         if 'first_name' in item and 'last_name' in item and item['first_name'] and item['last_name']:
@@ -118,14 +140,28 @@ def upload_to_table(data):
             response = table.get_item(Key={'name': full_name})
             if 'Item' not in response:
                 # Insert item into the table if it doesn't already exist
-                try:
-                    item['name'] = full_name
-                    table.put_item(Item=item)
-                except Exception as e:
-                    return False
+                retry = 0
+                delay = 2
+                while retry < MAX_RETRY:
+                    try:
+                        item['name'] = full_name
+                        table.put_item(Item=item)
+                        break
+                    except Exception as e:
+                        retry += 1
+                        if retry == MAX_RETRY:
+                            items_failed += 1
+                            break # still try to add other items
+                        #back off delay
+                        time.sleep(delay)
+                        delay *= 2
         else:
             # Skip inserting item if either first_name or last_name attribute is missing or empty
             continue
+    
+    if items_failed > 0:
+        return False
+    
     return True
 
 
@@ -144,27 +180,58 @@ def deleteFiles():
     aws_key = 'awsInput.txt'
     azure_key = 'azureInput.txt'
 
-    #delete
-    try:
-        s3.delete_object(Bucket=bucket_name, Key=aws_key)
-        s3.delete_object(Bucket=bucket_name, Key=azure_key)
-    except Exception as e:
-        return False
-    
+    #delete aws
+    retry = 0
+    delay = 2
+    while retry < MAX_RETRY:
+        try:
+            s3.delete_object(Bucket=bucket_name, Key=aws_key)
+            break
+        except Exception as e:
+            retry += 1
+            if retry == MAX_RETRY:
+                return False
+            #backoff delay
+            time.sleep(delay)
+            delay *= 2
+
+    #delete azure 
+    retry = 0
+    delay = 2
+    while retry < MAX_RETRY:
+        try:
+            s3.delete_object(Bucket=bucket_name, Key=azure_key)
+            break
+        except Exception as e:
+            retry += 1
+            if retry == MAX_RETRY:
+                return False
+            #backoff delay
+            time.sleep(delay)
+            delay *= 2
+        
     return True
 
 # helper function for clear, empties out the table
 def emptyTable():
-    try: 
-        #get all items in table
-        response = table.scan()
-        # delete items in the table
-        for item in response['Items']:
-            table.delete_item(Key={'name': item['name']})
-    except Exception as e:
-        return False
+    retry = 0
+    delay = 2
+    while retry < MAX_RETRY:
+        try: 
+            #get all items in table
+            response = table.scan()
+            # delete items in the table
+            for item in response['Items']:
+                table.delete_item(Key={'name': item['name']})
+            return True
+        except Exception as e:
+            retry += 1
+            if retry == MAX_RETRY:
+                return False
+            #backoff delay
+            time.sleep(delay)
+            delay *= 2
 
-    return True
 
 # ---query for user from table---
 @app.route("/query", methods=["POST", "GET"])  
