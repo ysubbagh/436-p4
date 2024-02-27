@@ -9,6 +9,7 @@ import requests
 import boto3
 import json
 import time
+from boto3.dynamodb.conditions import Key
 
 # ---vars---
 app = Flask(__name__)
@@ -134,8 +135,10 @@ def upload_to_table(data):
     for item in data:
         # Check if 'first_name' and 'last_name' attributes exist and are not empty
         if 'first_name' in item and 'last_name' in item and item['first_name'] and item['last_name']:
-            # Concatenate first and last names to form the full name
-            full_name = f"{item['first_name']} {item['last_name']}"
+            formatted_first_name = item['first_name'].capitalize()
+            formatted_last_name = item['last_name'].capitalize()
+            full_name = f"{formatted_first_name} {formatted_last_name}"
+
             # Check if item exists in the table
             response = table.get_item(Key={'name': full_name})
             if 'Item' not in response:
@@ -234,12 +237,60 @@ def emptyTable():
 
 
 # ---query for user from table---
-@app.route("/query", methods=["POST", "GET"])  
+@app.route("/query", methods=["POST"])  
 def query():
-    first_name = request.form.get("first_name")
-    last_name = request.form.get("last_name")
-    return jsonify({"message": "No results found."})
+    #get user data
+    data = request.json
+    first_name = data.get("first_name")
+    last_name =  data.get("last_name")
 
-# intiazliation 
+    #check query request
+    if first_name is None and last_name is None:
+        return jsonify({"message": "Query request invalid."})
+    
+   # Capitalize the first letter of first and last names
+    first_name = first_name.capitalize() if first_name else None
+    last_name = last_name.capitalize() if last_name else None
+
+    # do the querying
+    retry = 0
+    delay = 2
+
+    results = []
+    while retry < MAX_RETRY:
+        try:
+            response = table.scan()
+            for item in response['Items']:
+                if first_name is not None and last_name is not None: #first and last name was given
+                    if first_name in item['name'] and last_name in item['name']:
+                        formatted_item = ' '.join([f"{key}={value}" for key, value in item.items() if key not in ['first_name', 'last_name']])
+                        results.append(f"{item['name']} {formatted_item}")
+                elif first_name is None: # only last name was given
+                    if last_name in item['name'] and not item['name'].startswith(last_name):
+                        formatted_item = ' '.join([f"{key}={value}" for key, value in item.items() if key not in ['first_name', 'last_name']])
+                        results.append(f"{item['name']} {formatted_item}")
+                elif last_name is None: # only first name is given
+                    if item['name'].startswith(first_name):
+                        formatted_item = ' '.join([f"{key}={value}" for key, value in item.items() if key not in ['first_name', 'last_name']])
+                        results.append(f"{item['name']} {formatted_item}")
+            break
+        except Exception as e:
+            retry += 1
+            if retry == MAX_RETRY:
+                return jsonify({"message": "Error executing query."}) 
+            time.sleep(delay)
+            delay *= 2
+
+    #return results or lack of
+    if results:
+        #format
+        results.sort(key=lambda x: x.split(' ')[0])
+        formatted_results = '\n'.join(results)
+        return jsonify({"message": formatted_results})
+    else:
+        return jsonify({"message": "No results found."})
+
+
+# ---intiazliation----
 if __name__ == '__main__':
     app.run(debug=True)

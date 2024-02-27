@@ -42,6 +42,8 @@
     <script>
         // load data into blob and database from the given file
         function loadData() {
+            document.getElementById("results").innerText = "Loading...";
+            
             fetch("/load-data", {method: "POST"})
             .then(response => response.json())
             .then(data => {
@@ -53,6 +55,8 @@
         
         // clear data from blob and database
         function clearData() {
+            document.getElementById("results").innerText = "Loading...";
+
             fetch("/clear-data", {method: "POST"})
             .then(response => response.json())
             .then(data => {
@@ -65,11 +69,16 @@
         // get person data via the name entered
         function query() {
             const firstName = document.getElementById("firstName").value;
+            const trimmedFirstName = firstName.replace(/\s/g, "");
             const lastName = document.getElementById("lastName").value;
+            const trimmedLastName = lastName.replace(/\s/g, ""); 
+
+            document.getElementById("results").innerText = "Loading...";
+
             fetch("/query", {
                 method: "POST",
-                body: JSON.stringify({firstName: firstName, lastName: lastName}),
-                headers: {"Content-Type": "/application/json"}
+                body: JSON.stringify({first_name: trimmedFirstName, last_name: trimmedLastName}),
+                headers: {"Content-Type": "application/json"}
             })
             .then(response => response.json())
             .then(data => {
