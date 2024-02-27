@@ -12,7 +12,7 @@ import time
 from boto3.dynamodb.conditions import Key
 
 # ---vars---
-app = Flask(__name__)
+application = Flask(__name__)
 MAX_RETRY = 3
 
 # setup aws stuff
