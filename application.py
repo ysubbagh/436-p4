@@ -4,10 +4,8 @@
 # Date: 2/25/23
 
 from flask import Flask, request, jsonify, url_for, redirect, render_template
-from azure.storage.blob import BlobServiceClient, BlobClient, ContainerClient
 import requests
 import boto3
-import json
 import time
 from boto3.dynamodb.conditions import Key
 

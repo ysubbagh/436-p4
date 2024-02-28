@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cloud Service Intergration</title>
+    <style>
+        /* Style for buttons */
+        .button {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            margin-right: 10px;
+        }
+
+        /* Style for text inputs */
+        input[type="text"] {
+            padding: 8px;
+            font-size: 16px;
+            margin-right: 10px;
+        }
+
+        /* Style for results display */
+        #query-results {
+            margin-top: 20px;
+            font-size: 16px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Cloud Services, Website and Storage Intergration</h1>
+    <h2>CSS 436 - Program 4</h2>
+    <h3>Author: Yasmine S</h3>
+    <button class="button" onclick="loadData()">Load Data</button>
+    <button class="button" onclick="clearData()">Clear Data</button><br><br>
+    First Name: <input type="text" id="firstName"><br><br>
+    Last Name: <input type="text" id="lastName"><br><br>
+    <button class="button" onclick="query()">Query</button><br><br>
+    <div id="results"></div>
+
+    <!-- To connect front to back via javascript-->
+    <script>
+        // load data into blob and database from the given file
+        function loadData() {
+            document.getElementById("results").innerText = "Loading...";
+            
+            fetch("/load-data", {method: "POST"})
+            .then(response => response.json())
+            .then(data => {
+                const message = data.message;
+                document.getElementById("results").innerText = message;
+            })
+            .catch(error => console.error("Error:", error));
+        }
+        
+        // clear data from blob and database
+        function clearData() {
+            document.getElementById("results").innerText = "Loading...";
+
+            fetch("/clear-data", {method: "POST"})
+            .then(response => response.json())
+            .then(data => {
+                const message = data.message;
+                document.getElementById("results").innerText = message;
+            })
+            .catch(error => console.error("Error:", error));
+        }
+
+        // get person data via the name entered
+        function query() {
+            const firstName = document.getElementById("firstName").value;
+            const trimmedFirstName = firstName.replace(/\s/g, "");
+            const lastName = document.getElementById("lastName").value;
+            const trimmedLastName = lastName.replace(/\s/g, ""); 
+
+            document.getElementById("results").innerText = "Loading...";
+
+            fetch("/query", {
+                method: "POST",
+                body: JSON.stringify({first_name: trimmedFirstName, last_name: trimmedLastName}),
+                headers: {"Content-Type": "application/json"}
+            })
+            .then(response => response.json())
+            .then(data => {
+                const message = data.message;
+                document.getElementById("results").innerText = message;
+            })
+            .catch(error => console.error("Error:", error));
+        }
+    </script>
+</body>
+</html>
