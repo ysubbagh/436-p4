@@ -22,13 +22,13 @@ table = dynamo.Table('prog4')
 
 
 # ---load page---
-@app.route("/")
+@application.route("/")
 def home():
     return render_template("index.html")
 
 
 # ---load data from sites---
-@app.route("/load-data", methods=["POST"])
+@application.route("/load-data", methods=["POST"])
 def loadData():
     # urls to retrieve from 
     awsUrl = 'https://s3-us-west-2.amazonaws.com/css490/input.txt'
@@ -169,7 +169,7 @@ def upload_to_table(data):
 
 
 # ---clear data from table---
-@app.route("/clear-data", methods=["POST"])  
+@application.route("/clear-data", methods=["POST"])  
 def clearData():
     if deleteFiles() and emptyTable():
         return jsonify({"message": "Data cleared successfully."})
@@ -237,7 +237,7 @@ def emptyTable():
 
 
 # ---query for user from table---
-@app.route("/query", methods=["POST"])  
+@application.route("/query", methods=["POST"])  
 def query():
     #get user data
     data = request.json
@@ -293,4 +293,4 @@ def query():
 
 # ---intiazliation----
 if __name__ == '__main__':
-    app.run(debug=True)
+    application.run()
