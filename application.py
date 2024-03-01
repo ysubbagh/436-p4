@@ -19,10 +19,12 @@ dynamo = boto3.resource('dynamodb')
 table = dynamo.Table('prog4')
 
 
+
 # ---load page---
 @application.route("/")
 def home():
     return render_template("index.html")
+
 
 
 # ---load data from sites---
@@ -291,4 +293,4 @@ def query():
 
 # ---intiazliation----
 if __name__ == '__main__':
-    application.run()
+    application.run(port=5000)
