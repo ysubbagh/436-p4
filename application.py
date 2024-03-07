@@ -14,8 +14,8 @@ application = Flask(__name__)
 MAX_RETRY = 3
 
 # setup aws stuff
-s3 = boto3.client('s3')
-dynamo = boto3.resource('dynamodb')
+s3 = boto3.client('s3', region_name='us-east-1')
+dynamo = boto3.resource('dynamodb', region_name='us-east-1')
 table = dynamo.Table('prog4')
 
 
@@ -293,4 +293,4 @@ def query():
 
 # ---intiazliation----
 if __name__ == '__main__':
-    application.run(host='0.0.0.0', port=5000)
+    application.run()

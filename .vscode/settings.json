@@ -1,0 +1,4 @@
+{
+    "docker.dockerPath": "/usr/local/bin/docker",
+    "docker.composeCommand": "/usr/local/bin/docker-compose"
+}

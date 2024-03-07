@@ -1,0 +1,22 @@
+version: '3'
+
+services:
+  dev:
+    build: 
+      context: .
+      dockerfile: ./Dockerfile
+    image: boto3_dev
+    environment:
+      ENVIRONMENT: dev
+    networks:
+      - dev_net
+  web:
+    build: .
+    ports:
+      - "8000:5000"
+  redis:
+    image: "redis:alpine"
+
+networks:
+  prod_net:
+  dev_net:
